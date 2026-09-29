@@ -41,7 +41,7 @@ export function CountRing({
     <View style={{ width: size, height: size }}>
       <Canvas style={StyleSheet.absoluteFill}>
         <Path path={track} style="stroke" strokeWidth={stroke} color={C.border} />
-        <Path path={arc} style="stroke" strokeWidth={stroke} strokeCap="round" opacity={paused ? 0.35 : 1}>
+        <Path path={arc} style="stroke" strokeWidth={stroke} strokeCap="round" opacity={progress <= 0.002 ? 0 : paused ? 0.35 : 1}>
           <SweepGradient c={vec(c, c)} colors={[C.sky, color, C.white, C.sky]} />
         </Path>
       </Canvas>

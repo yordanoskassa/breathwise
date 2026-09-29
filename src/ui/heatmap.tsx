@@ -12,28 +12,41 @@ import { C } from '@/theme';
 
 type Box = { x: number; y: number; w: number; h: number };
 
-function hotBox(heat: ArrayLike<number>, cw: number, ch: number): Box | null {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (let i = 0; i < heat.length; i++) {
-    if (heat[i] < 0.5) continue;
-    const gx = i % GRID_COLS;
-    const gy = Math.floor(i / GRID_COLS);
-    minX = Math.min(minX, gx);
-    minY = Math.min(minY, gy);
-    maxX = Math.max(maxX, gx);
-    maxY = Math.max(maxY, gy);
+const HOT = 0.55;
+
+function isHot(heat: ArrayLike<number>, gx: number, gy: number): boolean {
+  if (gx < 0 || gy < 0 || gx >= GRID_COLS || gy >= GRID_ROWS) return false;
+  return heat[gy * GRID_COLS + gx] >= HOT;
+}
+
+/**
+ * Box around the breathing region: hot cells that have hot neighbours (so a
+ * lone flickering tile can't stretch it), trimmed to the 10th–90th
+ * percentile of their positions.
+ */
+function hotBox(heat: ArrayLike<number>, cw: number, ch: number, width: number, height: number): Box | null {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let gy = 0; gy < GRID_ROWS; gy++) {
+    for (let gx = 0; gx < GRID_COLS; gx++) {
+      if (!isHot(heat, gx, gy)) continue;
+      let neighbours = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && isHot(heat, gx + dx, gy + dy)) neighbours++;
+      if (neighbours < 2) continue;
+      xs.push(gx);
+      ys.push(gy);
+    }
   }
-  if (!isFinite(minX)) return null;
+  if (xs.length < 2) return null;
+  xs.sort((a, b) => a - b);
+  ys.sort((a, b) => a - b);
+  const q = (arr: number[], p: number) => arr[Math.min(arr.length - 1, Math.floor(p * arr.length))];
   const pad = 6;
-  return {
-    x: minX * cw - pad,
-    y: minY * ch - pad,
-    w: (maxX - minX + 1) * cw + pad * 2,
-    h: (maxY - minY + 1) * ch + pad * 2,
-  };
+  const x0 = Math.max(4, q(xs, 0.08) * cw - pad);
+  const y0 = Math.max(4, q(ys, 0.08) * ch - pad);
+  const x1 = Math.min(width - 4, (q(xs, 0.92) + 1) * cw + pad);
+  const y1 = Math.min(height - 4, (q(ys, 0.92) + 1) * ch + pad);
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
 export function HeatOverlay({
@@ -51,7 +64,7 @@ export function HeatOverlay({
 }) {
   const cw = width / GRID_COLS;
   const ch = height / GRID_ROWS;
-  const box = useMemo(() => (locked ? hotBox(heat, cw, ch) : null), [heat, cw, ch, locked]);
+  const box = useMemo(() => (locked ? hotBox(heat, cw, ch, width, height) : null), [heat, cw, ch, width, height, locked]);
 
   const bx = useSharedValue(width / 2);
   const by = useSharedValue(height / 2);

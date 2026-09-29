@@ -3,7 +3,16 @@
  * scrolling waveform, and a tap strip to double-check the camera by hand.
  */
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
+import { useEffect } from 'react';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import type { SessionSnapshot } from '@/dsp/session';
 import { useT } from '@/i18n';
@@ -27,6 +36,12 @@ export function CountPanel({
 }) {
   const t = useT();
   const counting = snap.phase !== 'searching';
+  const bump = useSharedValue(1);
+  useEffect(() => {
+    if (!pulse) return;
+    bump.value = withSequence(withTiming(1.22, { duration: 110 }), withSpring(1, { damping: 10, stiffness: 180 }));
+  }, [pulse, bump]);
+  const bumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: bump.value }] }));
   const left = Math.max(0, Math.ceil(snap.target - snap.counted));
   const ringSize = 132;
   const waveW = width - ringSize - S.lg;
@@ -36,7 +51,7 @@ export function CountPanel({
       <View style={styles.row}>
         <CountRing progress={snap.counted / snap.target} size={ringSize} paused={snap.pauseReason !== null}>
           {counting ? (
-            <Animated.View key={pulse} entering={ZoomIn.springify().damping(12)} style={styles.center}>
+            <Animated.View style={[styles.center, bumpStyle]}>
               <T v="num" style={styles.count}>
                 {snap.breaths}
               </T>
@@ -57,7 +72,7 @@ export function CountPanel({
               {snap.liveRate ? t('m.live', { rate: Math.round(snap.liveRate) }) : '—'}
             </T>
             {counting ? (
-              <T v="label" color={C.teal}>
+              <T v="h2" color={C.teal} style={{ fontVariant: ['tabular-nums'] }}>
                 {t('m.secondsLeft', { n: left })}
               </T>
             ) : null}

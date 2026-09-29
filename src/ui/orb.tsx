@@ -3,7 +3,7 @@
  * Pass `rate` to breathe at a given pace, or `pulse` (a counter) to make it
  * bloom once per detected breath.
  */
-import { Blur, Canvas, Circle, Group, RadialGradient, vec } from '@shopify/react-native-skia';
+import { Canvas, Circle, Group, RadialGradient, vec } from '@shopify/react-native-skia';
 import { useEffect } from 'react';
 import {
   Easing,
@@ -51,9 +51,10 @@ export function BreathOrb({
   }, [pulse, bloom]);
 
   const c = size / 2;
-  const base = size * 0.3;
+  const base = size * 0.27;
   const r = useDerivedValue(() => base * (1 + 0.14 * breath.value + 0.18 * bloom.value));
-  const haloR = useDerivedValue(() => base * (1.45 + 0.3 * breath.value + 0.45 * bloom.value));
+  // Kept inside the canvas (≤ size/2) so the glow never shows a clipped edge.
+  const haloR = useDerivedValue(() => base * (1.35 + 0.2 * breath.value + 0.25 * bloom.value));
   const haloOpacity = useDerivedValue(() => 0.35 + 0.25 * breath.value + 0.4 * bloom.value);
   const ringR = useDerivedValue(() => base * (1.15 + 0.9 * bloom.value));
   const ringOpacity = useDerivedValue(() => 0.8 * bloom.value);
@@ -61,9 +62,8 @@ export function BreathOrb({
   return (
     <Canvas style={{ width: size, height: size }}>
       <Group opacity={haloOpacity}>
-        <Circle cx={c} cy={c} r={haloR}>
-          <RadialGradient c={vec(c, c)} r={size / 2} colors={[colors[0] + 'AA', colors[1] + '00']} />
-          <Blur blur={24} />
+        <Circle cx={c} cy={c} r={size / 2}>
+          <RadialGradient c={vec(c, c)} r={haloR} colors={[colors[0] + 'CC', colors[1] + '55', colors[1] + '00']} positions={[0.4, 0.72, 1]} />
         </Circle>
       </Group>
       <Circle cx={c} cy={c} r={ringR} style="stroke" strokeWidth={2} color={colors[0]} opacity={ringOpacity} />
@@ -71,8 +71,8 @@ export function BreathOrb({
         <RadialGradient
           c={vec(c - base * 0.35, c - base * 0.4)}
           r={base * 1.6}
-          colors={['#FFFFFF', colors[0], colors[1], '#0B1A33']}
-          positions={[0, 0.25, 0.7, 1]}
+          colors={['#FFFFFF', colors[0], colors[1], '#1B3F86']}
+          positions={[0, 0.22, 0.66, 1]}
         />
       </Circle>
     </Canvas>

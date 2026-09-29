@@ -12,11 +12,15 @@ import { HeatOverlay } from '@/ui/heatmap';
 import { Icon } from '@/ui/icon';
 import { BreathOrb } from '@/ui/orb';
 
+/** A chest-shaped patch of "breathing" cells for the privacy illustration. */
 const DEMO_HEAT = (() => {
   const h = new Float64Array(GRID_CELLS);
-  const hot = [66, 67, 68, 69, 78, 79, 80, 81, 90, 91, 92, 93, 103, 104];
-  for (const i of hot) h[i] = 0.9;
-  for (const i of [54, 55, 56, 57, 65, 70, 77, 82, 89, 94, 102, 105]) h[i] = 0.35;
+  for (let i = 0; i < GRID_CELLS; i++) {
+    const dx = ((i % 12) - 5.5) / 3.4;
+    const dy = (Math.floor(i / 12) - 8.5) / 3;
+    const d = dx * dx + dy * dy;
+    h[i] = d < 0.55 ? 0.9 : d < 1.1 ? 0.4 : 0;
+  }
   return h;
 })();
 

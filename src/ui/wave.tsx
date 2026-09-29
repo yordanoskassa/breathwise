@@ -91,6 +91,16 @@ export function SignalPlot({
   height: number;
   color?: string;
 }) {
-  const markerIdx = useMemo(() => breathTimes.map((t) => Math.round(t * rate)), [breathTimes, rate]);
+  // Snap each breath to the local peak so dots sit on the crests.
+  const markerIdx = useMemo(
+    () =>
+      breathTimes.map((t) => {
+        const i = Math.round(t * rate);
+        let best = i;
+        for (let k = Math.max(0, i - 3); k <= Math.min(values.length - 1, i + 3); k++) if (values[k] > (values[best] ?? -Infinity)) best = k;
+        return best;
+      }),
+    [breathTimes, rate, values],
+  );
   return <LiveWave values={values} markers={markerIdx} width={width} height={height} color={color} />;
 }

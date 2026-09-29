@@ -113,17 +113,16 @@ export default function ResultScreen() {
         {draft.method === 'camera' && draft.wave.length > 0 ? (
           <Animated.View entering={FadeInDown.delay(250)}>
             <Card style={{ gap: S.md }}>
-              <Row style={{ justifyContent: 'space-between' }}>
-                <T v="h2">{t('r.signal')}</T>
+              <T v="h2">{t('r.signal')}</T>
+              <SignalPlot values={draft.wave} breathTimes={draft.breathTimes} rate={draft.waveRate} width={contentW - S.lg * 2} height={110} color={tone} />
+              <Row gap={S.sm} style={{ flexWrap: 'wrap' }}>
                 {draft.confidenceLabel ? (
                   <Pill
+                    dot
                     label={`${t('r.confidence')}: ${t('conf.' + draft.confidenceLabel)}`}
                     color={draft.confidenceLabel === 'high' ? C.teal : draft.confidenceLabel === 'medium' ? C.sky : C.amber}
                   />
                 ) : null}
-              </Row>
-              <SignalPlot values={draft.wave} breathTimes={draft.breathTimes} rate={draft.waveRate} width={contentW - S.lg * 2} height={110} color={tone} />
-              <Row gap={S.sm} style={{ flexWrap: 'wrap' }}>
                 <Pill label={t('r.method.camera')} color={C.sky} />
                 {draft.corrected ? <Pill label={t('r.corrected')} color={C.violet} /> : null}
                 {draft.verifyTaps ? <Pill label={t('r.verify', { cam: draft.countedBreaths, taps: draft.verifyTaps })} color={C.dim} /> : null}

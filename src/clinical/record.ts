@@ -18,7 +18,7 @@ export function fromCamera(
   r: SessionResult,
   opts: { childId: string | null; ageMonths: number; verifyTaps: number | null },
 ): Measurement {
-  const factor = r.waveRate >= 10 ? 2 : 1;
+  const factor = 1;
   return {
     id: uid(),
     childId: opts.childId,
