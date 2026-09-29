@@ -1,0 +1,5 @@
+node_modules
+out
+# Screen recordings and licensed music stay local (large / third-party)
+public/clips
+public/audio
