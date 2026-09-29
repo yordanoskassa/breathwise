@@ -31,7 +31,8 @@ export default function Home() {
   const [ageIdx, setAgeIdx] = useState(2);
 
   const quick = role === 'chw' || children.length === 0;
-  const target = !quick && selected ? { child: selected } : { age: String(QUICK_AGES[ageIdx].months) };
+  const childId = children.some((c) => c.id === selected) ? selected : (children[0]?.id ?? null);
+  const target = !quick && childId ? { child: childId } : { age: String(QUICK_AGES[ageIdx].months) };
 
   return (
     <Screen>
@@ -98,7 +99,7 @@ export default function Home() {
                 {t('home.children')}
               </T>
             </View>
-            <ChildrenRow selected={selected} onSelect={setSelected} />
+            <ChildrenRow selected={childId} onSelect={setSelected} />
           </Animated.View>
         ) : null}
 

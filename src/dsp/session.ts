@@ -133,7 +133,7 @@ export class MeasureSession {
       liveRate: e.freq > 0 ? e.freq * 60 : null,
       quality: e.quality,
       searchSeconds: this.searchSeconds,
-      heat: e.heat,
+      heat: Float64Array.from(e.heat),
       wave: this.wave.slice(),
       waveBreaths: this.waveBreathT.map((t) => nearestIndex(this.waveT, t)),
     };

@@ -1,6 +1,6 @@
 import * as Device from 'expo-device';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
@@ -30,6 +30,7 @@ export default function MeasureScreen() {
   const [torch, setTorch] = useState(false);
   const [sim, setSim] = useState(false);
   const [verifyTaps, setVerifyTaps] = useState(0);
+  const verifyTapsRef = useRef(0);
 
   const onDone = useCallback(
     (r: SessionResult) => {
@@ -42,8 +43,11 @@ export default function MeasureScreen() {
   const frameOutput = useCameraGridOutput(onGrid);
   const simImage = useSimulatedPatient(sim, 46, onGrid);
 
-  const verifyTapsRef = useVerifyRef(verifyTaps);
   useEffect(() => () => stopVoice(), []);
+  const onVerifyTap = () => {
+    verifyTapsRef.current += 1;
+    setVerifyTaps(verifyTapsRef.current);
+  };
 
   const stageW = Math.min(screenW - S.lg * 2, (screenH * 0.5 * 3) / 4);
   const stageH = (stageW * 4) / 3;
@@ -109,7 +113,7 @@ export default function MeasureScreen() {
         )}
 
         <View style={{ width: stageW, gap: S.md }}>
-          <CountPanel snap={snap} pulse={pulse} width={stageW - S.md * 2} verifyTaps={verifyTaps} onVerifyTap={() => setVerifyTaps((n) => n + 1)} />
+          <CountPanel snap={snap} pulse={pulse} width={stageW - S.md * 2} verifyTaps={verifyTaps} onVerifyTap={onVerifyTap} />
           {snap.phase === 'searching' ? <SearchTips seconds={snap.searchSeconds} onTap={() => router.replace({ pathname: '/tap', params: childParams(childId, ageMonths) })} /> : null}
         </View>
       </View>
@@ -147,12 +151,6 @@ function SearchTips({ seconds, onTap }: { seconds: number; onTap: () => void }) 
 
 function childParams(childId: string | null, ageMonths: number) {
   return childId ? { child: childId } : { age: String(ageMonths) };
-}
-
-function useVerifyRef(n: number) {
-  const [ref] = useState(() => ({ current: 0 }));
-  ref.current = n;
-  return ref;
 }
 
 const styles = StyleSheet.create({
