@@ -106,19 +106,23 @@ export function bandBins(fftSize: number, sampleRate: number, lowHz: number, hig
   };
 }
 
-export function bandPeak(
-  p: Float64Array,
-  lo: number,
-  hi: number,
-  hzPerBin: number,
-  halfWidth = 2,
-): BandPeak {
+/**
+ * Peak window: ±8% of the peak frequency (at least ±2 bins). Real breathing
+ * wanders a few breaths/min within a window, so a fixed ±2-bin window would
+ * call a perfectly good but slightly irregular rhythm "noisy".
+ */
+export function peakHalfWidth(bin: number): number {
+  return Math.max(2, Math.round(bin * 0.08));
+}
+
+export function bandPeak(p: Float64Array, lo: number, hi: number, hzPerBin: number): BandPeak {
   let best = lo;
   let total = 0;
   for (let k = lo; k <= hi; k++) {
     total += p[k];
     if (p[k] > p[best]) best = k;
   }
+  const halfWidth = peakHalfWidth(best);
   let near = 0;
   for (let k = Math.max(lo, best - halfWidth); k <= Math.min(hi, best + halfWidth); k++) near += p[k];
   return {

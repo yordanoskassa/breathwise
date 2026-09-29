@@ -8,7 +8,7 @@
  *    clean respiration waveform. PCA also sorts out sign: an edge moving up
  *    brightens one cell and darkens its neighbour.
  */
-import { bandBins, bandPeak, interpolatePeak, nextPow2, powerSpectrum } from './spectrum.ts';
+import { bandBins, bandPeak, interpolatePeak, nextPow2, peakHalfWidth, powerSpectrum } from './spectrum.ts';
 
 export type FusionConfig = {
   sampleRate: number;
@@ -79,7 +79,7 @@ export function analyzeCells(
   let voteNear = 0;
   for (let k = lo; k <= hi; k++) {
     voteTotal += votes[k];
-    if (Math.abs(k - best) <= 2) voteNear += votes[k];
+    if (Math.abs(k - best) <= peakHalfWidth(best)) voteNear += votes[k];
   }
   const agreement = voteTotal > 0 ? voteNear / voteTotal : 0;
 

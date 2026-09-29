@@ -28,7 +28,7 @@ export const DEFAULT_ENGINE_CONFIG: Omit<EngineConfig, 'cells'> = {
   analyzeEverySec: 1,
   maxCells: 16,
   lockQuality: 0.42,
-  unlockQuality: 0.25,
+  unlockQuality: 0.2,
 };
 
 export type EngineSample = { t: number; value: number; motion: boolean; locked: boolean };
@@ -226,7 +226,7 @@ export class BreathEngine {
     if (!this.locked && this.goodRuns >= 2) {
       this.locked = true;
       this.peaks.reset();
-    } else if (this.locked && this.badRuns >= 3) {
+    } else if (this.locked && this.badRuns >= 4) {
       this.locked = false;
     }
   }

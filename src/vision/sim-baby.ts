@@ -9,6 +9,8 @@ export class BabyScene {
   readonly width: number;
   readonly height: number;
   private base: Float32Array;
+  /** 1 on the blanket and hands (what breathing moves), 0 on the mattress. */
+  private mask: Float32Array;
   private noise: Float32Array;
   private phase = 0;
   private lastT = 0;
@@ -19,7 +21,9 @@ export class BabyScene {
     this.width = width;
     this.height = height;
     this.rateBpm = rateBpm;
-    this.base = renderBase(width, height);
+    const { img, mask } = renderBase(width, height);
+    this.base = img;
+    this.mask = mask;
     this.noise = new Float32Array(4096);
     let s = 12345;
     for (let i = 0; i < this.noise.length; i++) {
@@ -49,7 +53,7 @@ export class BabyScene {
         const i = y * w + x;
         const gx = (x - cx) / rx;
         const gy = (y - cy) / ry;
-        const g = Math.exp(-(gx * gx + gy * gy) * 1.4);
+        const g = Math.exp(-(gx * gx + gy * gy) * 1.4) * this.mask[i];
         let v: number;
         if (g > 0.02) {
           const s = 1 / (1 + k * g);
@@ -81,8 +85,9 @@ function smooth(e: number): number {
   return Math.max(0, Math.min(1, (1 - e) * 12 + 0.5));
 }
 
-function renderBase(w: number, h: number): Float32Array {
+function renderBase(w: number, h: number): { img: Float32Array; mask: Float32Array } {
   const img = new Float32Array(w * h);
+  const mask = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const u = x / w;
@@ -101,6 +106,7 @@ function renderBase(w: number, h: number): Float32Array {
       const fold = 16 * Math.sin(u * 14 - v * 5) * Math.exp(-((u - 0.5) ** 2) * 5);
       const blanket = 112 + 58 * stripe + fold - 34 * be * be;
       c = c * (1 - bm) + blanket * bm;
+      let body = bm;
 
       // Head resting above the blanket, with a dark cap of hair.
       const hx = (u - 0.5) / 0.19;
@@ -119,9 +125,11 @@ function renderBase(w: number, h: number): Float32Array {
         const ae = Math.sqrt(ax * ax + ay * ay);
         const am = smooth(ae);
         c = c * (1 - am) + (182 - 36 * ae * ae) * am;
+        body = Math.max(body, am);
       }
       img[y * w + x] = c;
+      mask[y * w + x] = body;
     }
   }
-  return img;
+  return { img, mask };
 }
