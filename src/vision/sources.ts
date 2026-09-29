@@ -9,7 +9,8 @@ import { useFrameOutput } from 'react-native-vision-camera';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { computeGrid, GRID_CELLS } from '@/dsp/grid';
-import { SyntheticScene } from '@/dsp/synthetic';
+
+import { BabyScene } from './sim-baby';
 
 export type GridHandler = (tSeconds: number, grid: number[]) => void;
 
@@ -67,10 +68,10 @@ export function useCameraGridOutput(onGrid: GridHandler) {
   });
 }
 
-const SIM_W = 72;
-const SIM_H = 96;
+const SIM_W = 120;
+const SIM_H = 160;
 
-/** Synthetic sleeping child (for the Simulator): grids + a preview image. */
+/** Simulated sleeping baby (for the Simulator): grids + a preview image. */
 export function useSimulatedPatient(active: boolean, rateBpm: number, onGrid: GridHandler) {
   const [image, setImage] = useState<SkImage | null>(null);
   const handlerRef = useRef(onGrid);
@@ -78,7 +79,7 @@ export function useSimulatedPatient(active: boolean, rateBpm: number, onGrid: Gr
 
   useEffect(() => {
     if (!active) return;
-    const scene = new SyntheticScene({ width: SIM_W, height: SIM_H, rateBpm, amplitudePx: 1.4, noise: 1.5, seed: 3 });
+    const scene = new BabyScene(SIM_W, SIM_H, rateBpm);
     const frame = new Uint8Array(SIM_W * SIM_H);
     const grid: number[] = new Array(GRID_CELLS).fill(0);
     const start = Date.now();

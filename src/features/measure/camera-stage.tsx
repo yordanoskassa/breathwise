@@ -2,7 +2,7 @@
  * The camera card: live preview (or simulated patient), breathing heatmap,
  * lock-on brackets, a scanning sweep while searching, and a status pill.
  */
-import { Canvas, Image as SkiaImage, type SkImage } from '@shopify/react-native-skia';
+import { Canvas, ColorMatrix, Image as SkiaImage, type SkImage } from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -85,7 +85,10 @@ export function CameraStage({
     <View style={[styles.card, { width, height }]}>
       {simImage ? (
         <Canvas style={StyleSheet.absoluteFill}>
-          <SkiaImage image={simImage} x={0} y={0} width={width} height={height} fit="cover" />
+          <SkiaImage image={simImage} x={0} y={0} width={width} height={height} fit="cover">
+            {/* Warm, low-light tint so the simulated feed reads like a night camera. */}
+            <ColorMatrix matrix={[1.05, 0, 0, 0, 0.02, 0, 0.94, 0, 0, 0.01, 0, 0, 0.82, 0, 0, 0, 0, 0, 1, 0]} />
+          </SkiaImage>
         </Canvas>
       ) : device ? (
         <Camera

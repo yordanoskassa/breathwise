@@ -28,7 +28,8 @@ export default function MeasureScreen() {
   const permission = useCameraPermission();
   const device = useCameraDevice('back');
   const [torch, setTorch] = useState(false);
-  const [sim, setSim] = useState(false);
+  // The Simulator has no camera: go straight to the simulated patient there.
+  const [sim, setSim] = useState(!Device.isDevice);
   const [verifyTaps, setVerifyTaps] = useState(0);
   const verifyTapsRef = useRef(0);
 
