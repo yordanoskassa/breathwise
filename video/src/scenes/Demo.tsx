@@ -102,7 +102,7 @@ export const Demo: React.FC = () => {
           color: C.faint,
           opacity: enter,
         }}>
-        iOS Simulator · simulated sleeping baby (real camera on device)
+        Recorded in the iOS Simulator · simulated baby
       </div>
       <AbsoluteFill style={{ left: 900, width: 900, paddingTop: 140, gap: 20 }}>
         <Label n="01" text="Measure" />
