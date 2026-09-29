@@ -23,7 +23,10 @@ export default function History() {
   const children = useApp((s) => s.children);
   const all = useApp((s) => s.measurements);
   const setDraft = useApp((s) => s.setDraft);
-  const [filter, setFilter] = useState<string>(children[0]?.id ?? 'all');
+  const [picked, setPicked] = useState<string | null>(null);
+  // Default to the first child once one exists (the tab may mount before any).
+  const filter = picked ?? children[0]?.id ?? 'all';
+  const setFilter = setPicked;
 
   const list = useMemo(
     () => (filter === 'all' ? all : all.filter((m) => (filter === 'quick' ? m.childId === null : m.childId === filter))),

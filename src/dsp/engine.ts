@@ -67,6 +67,8 @@ export class BreathEngine {
   private scratch: Float64Array;
   private diffs: number[];
   private normalized: Float64Array;
+  private meanLevel = -1;
+  private meanT = 0;
 
   constructor(cells: number, overrides: Partial<EngineConfig> = {}) {
     this.cfg = { ...DEFAULT_ENGINE_CONFIG, cells, ...overrides };
@@ -86,7 +88,7 @@ export class BreathEngine {
   pushFrame(t: number, rawGrid: ArrayLike<number>): EngineUpdate {
     const out: EngineUpdate = { samples: [], breaths: [] };
     const cells = this.cfg.cells;
-    const grid = this.normalizeIllumination(rawGrid);
+    const grid = this.normalizeIllumination(t, rawGrid);
     if (!this.lastRaw || t - this.lastRawT > 1.5 || t <= this.lastRawT) {
       this.restart(t, grid);
       return out;
@@ -118,15 +120,24 @@ export class BreathEngine {
   }
 
   /**
-   * Divide out the whole-frame brightness so exposure tweaks and light
-   * flicker (which hit every cell alike) don't masquerade as breathing.
+   * Divide out slow whole-frame brightness drift (auto-exposure, dusk) using
+   * a ~4 s moving average of the frame mean. Using the instantaneous mean
+   * would leak the breathing rhythm itself into every cell whenever the
+   * chest fills a large part of the frame. Sudden jumps are left to the
+   * motion gate.
    */
-  private normalizeIllumination(grid: ArrayLike<number>): Float64Array {
+  private normalizeIllumination(t: number, grid: ArrayLike<number>): Float64Array {
     const out = this.normalized;
     let mean = 0;
     for (let c = 0; c < this.cfg.cells; c++) mean += grid[c];
     mean /= this.cfg.cells;
-    const k = mean > 1 ? 128 / mean : 1;
+    if (this.meanLevel < 0 || t <= this.meanT || t - this.meanT > 1.5) {
+      this.meanLevel = mean;
+    } else {
+      this.meanLevel += Math.min(1, (t - this.meanT) / 4) * (mean - this.meanLevel);
+    }
+    this.meanT = t;
+    const k = this.meanLevel > 1 ? 128 / this.meanLevel : 1;
     for (let c = 0; c < this.cfg.cells; c++) out[c] = grid[c] * k;
     return out;
   }

@@ -44,6 +44,8 @@ export default function ChildSheet() {
           placeholderTextColor={C.faint}
           style={styles.input}
           autoFocus={!existing}
+          autoCorrect={false}
+          autoCapitalize="words"
           returnKeyType="done"
         />
       </View>
