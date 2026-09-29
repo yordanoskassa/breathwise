@@ -11,10 +11,9 @@ export class BabyScene {
   private base: Float32Array;
   /** 1 on the blanket and hands (what breathing moves), 0 on the mattress. */
   private mask: Float32Array;
-  private noise: Float32Array;
+  private rng = 0x9e3779b9;
   private phase = 0;
   private lastT = 0;
-  private frameNo = 0;
   private rateBpm: number;
 
   constructor(width: number, height: number, rateBpm: number) {
@@ -24,12 +23,6 @@ export class BabyScene {
     const { img, mask } = renderBase(width, height);
     this.base = img;
     this.mask = mask;
-    this.noise = new Float32Array(4096);
-    let s = 12345;
-    for (let i = 0; i < this.noise.length; i++) {
-      s = (s * 1103515245 + 12345) >>> 0;
-      this.noise[i] = ((s >>> 8) / 16777216 - 0.5) * 3.2;
-    }
   }
 
   render(t: number, out: Uint8Array): void {
@@ -45,8 +38,9 @@ export class BabyScene {
     const rx = w * 0.3;
     const ry = h * 0.2;
     const k = 0.028 * lift; // up to ~3% expansion at the chest centre
-    const n0 = (this.frameNo++ * 997) % this.noise.length;
-    let ni = n0;
+    // Fresh white sensor noise every frame (xorshift32). A repeating noise
+    // table would add a fake rhythm that the engine rightly picks up.
+    let r = this.rng;
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -61,11 +55,14 @@ export class BabyScene {
         } else {
           v = base[i];
         }
-        v += this.noise[ni];
-        ni = ni + 1 === this.noise.length ? 0 : ni + 1;
+        r ^= r << 13;
+        r ^= r >>> 17;
+        r ^= r << 5;
+        v += ((r >>> 0) / 4294967296 - 0.5) * 3.2;
         out[i] = v < 0 ? 0 : v > 255 ? 255 : v;
       }
     }
+    this.rng = r;
   }
 }
 
