@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * End-to-end accuracy on synthetic scenes: pixels → grid → engine → count.
  * Run with `npm test` (Node's built-in runner, no extra deps).
