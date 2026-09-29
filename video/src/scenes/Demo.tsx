@@ -1,121 +1,100 @@
-import { AbsoluteFill, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, interpolate, Sequence, useCurrentFrame } from 'remotion';
 
-import { Background } from '../components/Background';
-import { beatPulse } from '../components/Beat';
-import { IconGrid, IconLock, IconScan, IconTimer, IconWave } from '../components/Icons';
+import { Field } from '../components/Field';
 import { Clip, Phone } from '../components/Phone';
-import { Callout, Kinetic, Label } from '../components/Text';
-import { CLIPS, localBeat, sceneStart } from '../timeline';
-import { C, FPS, fontFamily } from '../theme';
+import { Caption, Reveal, Steps, useIn } from '../components/Text';
+import { CLIPS, localBeat } from '../timeline';
+import { C, EASE, FPS, text } from '../theme';
 
 const b = (k: number) => localBeat('demo', k);
 const M = CLIPS.measure;
 
 /**
- * Clip plan (all cuts on beats):
- *  A  1×  searching → heat → lock-on lands exactly on beat 24
- *  B  7×  the 60-second count flies by
- *  C  1×  last breaths → result pops on the section change
+ * Clip plan (cuts on beats):
+ *  A  1×  home → measure → searching → lock-on lands on beat 8
+ *  B  ~7× the 60-second count
+ *  C  1×  final breaths; the result pops just before the section change
  */
-const LOCK_BEAT = 24;
+const LOCK_BEAT = 8;
 const aStart = M.lock - b(LOCK_BEAT) / FPS;
-const aEnd = aStart + b(28) / FPS;
-// The result pops ~0.6 s before the cut into the next section.
-const cStart = M.resultIn - (b(56) - b(48)) / FPS + 0.6;
-const bRate = (cStart - aEnd) / ((b(48) - b(28)) / FPS);
+const aEnd = aStart + b(10) / FPS;
+const cStart = M.resultIn - (b(20) - b(17)) / FPS + 0.6;
+const bRate = (cStart - aEnd) / ((b(17) - b(10)) / FPS);
 
-const SpeedBadge: React.FC<{ len: number }> = ({ len }) => {
+const SpeedTag: React.FC<{ len: number }> = ({ len }) => {
   const f = useCurrentFrame();
   const o = interpolate(f, [0, 6, len - 6, len], [0, 1, 1, 0], { extrapolateRight: 'clamp' });
   return (
     <div
       style={{
         position: 'absolute',
-        top: 118,
-        right: 22,
+        top: 124,
+        right: 20,
         opacity: o,
-        fontFamily,
-        fontSize: 20,
-        fontWeight: 900,
-        color: C.bg,
-        background: C.teal,
-        padding: '6px 14px',
-        borderRadius: 999,
-        letterSpacing: 1,
+        fontFamily: text,
+        fontSize: 21,
+        fontWeight: 800,
+        color: C.ink,
+        background: C.yellow,
+        padding: '6px 12px',
       }}>
-      ▶▶ {Math.round(bRate)}× · 60 s COUNT
+      {Math.round(bRate)}× speed · 60-second count
     </div>
   );
 };
 
 export const Demo: React.FC = () => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const abs = f + sceneStart('demo');
-  const enter = spring({ frame: f, fps, config: { damping: 16, stiffness: 90 } });
-  // Push in on the camera card as it locks on (beat 24), pull back two bars later.
-  const zoom = interpolate(f, [b(18), b(23), b(30), b(33)], [1, 1.45, 1.45, 1], {
+  const enter = useIn(0, 18);
+  const zoom = interpolate(f, [b(6), b(7.6), b(10.5), b(11.5)], [1, 1.42, 1.42, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
+    easing: EASE,
   });
-  const lockFlash = interpolate(f, [b(LOCK_BEAT) - 1, b(LOCK_BEAT), b(LOCK_BEAT) + 10], [0, 0.3, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const pulse = 1 + 0.012 * beatPulse(abs, 2, 8);
 
   return (
-    <AbsoluteFill>
-      <Background />
-      <AbsoluteFill style={{ justifyContent: 'center', paddingLeft: 250 }}>
+    <Field color={C.ink}>
+      <AbsoluteFill style={{ justifyContent: 'center', paddingLeft: 230 }}>
         <div
           style={{
-            transform: `perspective(1800px) translateX(${(1 - enter) * -500}px) rotateY(${(1 - enter) * 28}deg) scale(${zoom * pulse})`,
+            transform: `translateY(${(1 - enter) * 120}px) scale(${zoom})`,
             transformOrigin: '50% 39%',
             opacity: enter,
             width: 'fit-content',
-            position: 'relative',
           }}>
-          <Phone height={940} glow={C.teal}>
-            <Sequence durationInFrames={b(28)}>
+          <Phone height={940} shadow="dark">
+            <Sequence durationInFrames={b(10)}>
               <Clip file="measure.mp4" from={aStart} to={aEnd + 0.2} />
             </Sequence>
-            <Sequence from={b(28)} durationInFrames={b(48) - b(28)}>
+            <Sequence from={b(10)} durationInFrames={b(17) - b(10)}>
               <Clip file="measure.mp4" from={aEnd} to={cStart + 0.5} rate={bRate} />
-              <SpeedBadge len={b(48) - b(28)} />
+              <SpeedTag len={b(17) - b(10)} />
             </Sequence>
-            <Sequence from={b(48)}>
+            <Sequence from={b(17)}>
               <Clip file="measure.mp4" from={cStart} to={M.end} />
             </Sequence>
-            <div style={{ position: 'absolute', inset: 0, background: C.teal, opacity: lockFlash, mixBlendMode: 'screen' }} />
           </Phone>
         </div>
       </AbsoluteFill>
+      <Caption at={10} color={C.grayOnInk} style={{ position: 'absolute', left: 230, bottom: 26, fontSize: 18 }}>
+        Recorded in the iOS Simulator with a simulated baby. On a phone, it’s the live camera.
+      </Caption>
 
-      <div
-        style={{
-          position: 'absolute',
-          left: 250,
-          bottom: 22,
-          width: 460,
-          textAlign: 'center',
-          fontFamily,
-          fontSize: 18,
-          fontWeight: 600,
-          color: C.faint,
-          opacity: enter,
-        }}>
-        Recorded in the iOS Simulator · simulated baby
-      </div>
-      <AbsoluteFill style={{ left: 900, width: 900, paddingTop: 140, gap: 20 }}>
-        <Label n="01" text="Measure" />
-        <Kinetic text="Point the camera. That’s it." size={70} delay={4} stagger={3} />
-        <div style={{ height: 14 }} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: 820 }}>
-          <Callout at={b(4)} icon={<IconScan color={C.sky} />} color={C.sky} text="Finds the breathing on its own" sub="No setup, no touching, no wearable" />
-          <Callout at={b(LOCK_BEAT)} icon={<IconGrid color={C.teal} />} text="Locks onto the chest" sub="Glowing tiles show where it sees breathing" />
-          <Callout at={b(32)} icon={<IconWave color={C.teal} />} text="Counts every breath, live" sub="A dot on the waveform and a gentle pulse" />
-          <Callout at={b(40)} icon={<IconTimer color={C.amber} />} color={C.amber} text="The WHO method: 60 seconds" sub="The clock pauses by itself if the child moves" />
-          <Callout at={b(48)} icon={<IconLock color={C.violet} />} color={C.violet} text="Nothing is recorded" sub="Video never leaves the phone" />
-        </div>
+      <AbsoluteFill style={{ left: 880, width: 900, paddingTop: 130 }}>
+        <Reveal size={76} color={C.white} at={4} lines={['Point the camera', 'at a sleeping child.']} />
+        <div style={{ height: 44 }} />
+        <Steps
+          onInk
+          width={860}
+          items={[
+            { at: b(1.5), title: 'Finds the breathing by itself', sub: 'No setup, no touching, no wearable' },
+            { at: b(LOCK_BEAT), title: 'Locks onto the chest', sub: 'Green tiles show where it sees breathing' },
+            { at: b(11), title: 'Counts every breath as it happens', sub: 'A dot on the trace, a small vibration' },
+            { at: b(14), title: 'Sixty seconds, the WHO method', sub: 'The clock pauses if the child moves' },
+            { at: b(17), title: 'Nothing is recorded', sub: 'Video never leaves the phone' },
+          ]}
+        />
       </AbsoluteFill>
-    </AbsoluteFill>
+    </Field>
   );
 };

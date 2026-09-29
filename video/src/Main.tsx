@@ -10,33 +10,50 @@ import { How } from './scenes/How';
 import { Money } from './scenes/Money';
 import { Result } from './scenes/Result';
 import { Title } from './scenes/Title';
-import { type SceneName, sceneLength, sceneStart, TOTAL_FRAMES } from './timeline';
-import { C } from './theme';
+import { beatFrame, MUSIC, type SceneName, sceneLength, sceneStart, TOTAL_FRAMES } from './timeline';
+import { C, FPS } from './theme';
 
-const ORDER: { name: SceneName; Comp: React.FC; flash: number; color?: string; pulse?: number }[] = [
-  { name: 'hook', Comp: Hook, flash: 0 },
-  { name: 'title', Comp: Title, flash: 0.9, color: C.teal },
-  { name: 'demo', Comp: Demo, flash: 0.35 },
-  { name: 'how', Comp: How, flash: 0.2 },
-  { name: 'result', Comp: Result, flash: 0.7, color: C.amber, pulse: 4 },
-  { name: 'accuracy', Comp: Accuracy, flash: 0.35, pulse: 4 },
-  { name: 'money', Comp: Money, flash: 0.35, color: C.violet, pulse: 4 },
-  { name: 'global', Comp: Global, flash: 0.25 },
-  { name: 'close', Comp: Close, flash: 0.15 },
+const ORDER: { name: SceneName; Comp: React.FC }[] = [
+  { name: 'hook', Comp: Hook },
+  { name: 'title', Comp: Title },
+  { name: 'demo', Comp: Demo },
+  { name: 'how', Comp: How },
+  { name: 'result', Comp: Result },
+  { name: 'accuracy', Comp: Accuracy },
+  { name: 'money', Comp: Money },
+  { name: 'global', Comp: Global },
+  { name: 'close', Comp: Close },
 ];
 
+const X0 = beatFrame(MUSIC.xfadeFromBeat);
+const X1 = beatFrame(MUSIC.xfadeToBeat);
+const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
+
 export const Main: React.FC = () => (
-  <AbsoluteFill style={{ backgroundColor: C.bg }}>
-    {ORDER.map(({ name, Comp, flash, color, pulse }) => (
+  <AbsoluteFill style={{ backgroundColor: C.ink }}>
+    {ORDER.map(({ name, Comp }) => (
       <Sequence key={name} from={sceneStart(name)} durationInFrames={sceneLength(name)} name={name}>
-        <SceneIn offset={sceneStart(name)} flash={flash} color={color} pulseEvery={pulse ?? 0}>
+        <SceneIn>
           <Comp />
         </SceneIn>
       </Sequence>
     ))}
-    <Audio
-      src={staticFile('audio/track.mp3')}
-      volume={(f) => interpolate(f, [0, 8, TOTAL_FRAMES - 30, TOTAL_FRAMES], [0, 1, 1, 0], { extrapolateRight: 'clamp' })}
-    />
+
+    {/* Excerpt 1: the quiet piano; fades out across one bar. */}
+    <Sequence durationInFrames={X1}>
+      <Audio
+        src={staticFile(MUSIC.file)}
+        trimBefore={Math.round(MUSIC.offset1 * FPS)}
+        volume={(f) => interpolate(f, [0, 6, X0, X1], [0, 1, 1, 0], clamp)}
+      />
+    </Sequence>
+    {/* Excerpt 2: the climax, rising in across the same bar; its last chord hits the logo. */}
+    <Sequence from={X0}>
+      <Audio
+        src={staticFile(MUSIC.file)}
+        trimBefore={Math.round((MUSIC.offset2 + X0 / FPS) * FPS)}
+        volume={(f) => interpolate(f, [0, X1 - X0, TOTAL_FRAMES - X0 - 45, TOTAL_FRAMES - X0], [0, 0.9, 0.9, 0], clamp)}
+      />
+    </Sequence>
   </AbsoluteFill>
 );

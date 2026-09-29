@@ -1,105 +1,59 @@
-import { AbsoluteFill, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Img, interpolate, Sequence, staticFile, useCurrentFrame } from 'remotion';
 
-import { Background } from '../components/Background';
-import { beatPulse } from '../components/Beat';
-import { Orb } from '../components/Orb';
-import { Kinetic } from '../components/Text';
-import { localBeat, sceneStart } from '../timeline';
-import { C, fontFamily } from '../theme';
+import { BreathDisc, Field } from '../components/Field';
+import { Caption, Reveal, useIn } from '../components/Text';
+import { localBeat, MUSIC, SCENES, sceneStart } from '../timeline';
+import { C, EASE, text } from '../theme';
 
 const b = (k: number) => localBeat('close', k);
-const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
-
-/** Grid dots rush into the orb during the build. */
-const Converge: React.FC<{ p: number }> = ({ p }) => {
-  const dots = [];
-  for (let i = 0; i < 60; i++) {
-    const a = (i / 60) * Math.PI * 2 + i * 0.37;
-    const r0 = 700 + (i % 7) * 60;
-    const r = r0 * (1 - p);
-    dots.push(
-      <div
-        key={i}
-        style={{
-          position: 'absolute',
-          left: 960 + Math.cos(a) * r - 5,
-          top: 540 + Math.sin(a) * r * 0.62 - 5,
-          width: 10,
-          height: 10,
-          borderRadius: 3,
-          background: i % 3 ? C.teal : C.sky,
-          opacity: 0.7 * p * (1 - p * 0.6),
-        }}
-      />,
-    );
-  }
-  return <AbsoluteFill>{dots}</AbsoluteFill>;
-};
+const HIT = MUSIC.hitBeat - SCENES.close[0];
 
 export const Close: React.FC = () => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const abs = f + sceneStart('close');
-  const build = interpolate(f, [b(16), b(24)], [0, 1], clamp);
-  const hit = spring({ frame: f - b(24), fps, config: { damping: 9, stiffness: 150 } });
-  const pulse = beatPulse(abs, 1, 6);
-  const fadeOut = interpolate(f, [b(24) + 95, b(24) + 118], [1, 0], clamp);
-  const flash = interpolate(f, [b(24), b(24) + 8], [0.8, 0], clamp);
-  const lineOut = interpolate(f, [b(16) - 8, b(16)], [1, 0], clamp);
-
+  const out = interpolate(f, [b(4) - 6, b(4)], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const grow = interpolate(f, [b(4), b(HIT)], [0.25, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
+  const credits = useIn(b(HIT) + 24, 16);
+  const fade = interpolate(f, [b(HIT) + 170, b(HIT) + 205], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
-    <AbsoluteFill style={{ opacity: fadeOut, backgroundColor: C.bg }}>
-      <Background intensity={0.7 + 0.8 * build} />
-      <Sequence durationInFrames={b(16)}>
-        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', gap: 24, opacity: lineOut }}>
-          <Kinetic text="For every parent at 2 a.m." size={84} stagger={3} style={{ justifyContent: 'center' }} />
-          <Kinetic
-            text="For every health worker, every day."
-            size={84}
-            delay={b(8)}
-            stagger={3}
-            color={C.teal}
-            style={{ justifyContent: 'center' }}
-          />
+    <Field color={C.ink}>
+      <Sequence durationInFrames={b(4)}>
+        <AbsoluteFill style={{ padding: '0 160px', justifyContent: 'center', opacity: out }}>
+          <Reveal size={88} color={C.white} lines={['For every parent at 2 a.m.']} />
+          <Reveal size={88} color={C.green} at={b(2)} lines={['For every health worker,', 'every day.']} />
         </AbsoluteFill>
       </Sequence>
 
-      <Sequence from={b(16)}>
-        <Converge p={build} />
+      <Sequence from={b(4)} durationInFrames={b(HIT) - b(4)}>
         <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
-          <div
-            style={{
-              transform: `translateY(${-110 * hit}px) scale(${(0.35 + 0.65 * build) * (1 + 0.08 * pulse) * (1 + 0.15 * hit)})`,
-            }}>
-            <Orb size={520} rate={14} glow={1 + build + pulse} id="close" />
+          <div style={{ transform: `scale(${grow})` }}>
+            <BreathDisc size={420} color={C.green} ring={C.white} offset={sceneStart('close') + b(4)} />
           </div>
         </AbsoluteFill>
       </Sequence>
 
-      <Sequence from={b(24)}>
-        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 150 }}>
-          <div
-            style={{
-              fontFamily,
-              fontSize: 170,
-              fontWeight: 900,
-              letterSpacing: -7,
-              color: C.text,
-              transform: `scale(${0.6 + 0.4 * hit})`,
-              opacity: hit,
-              textShadow: `0 0 60px ${C.teal}55`,
-            }}>
-            Breathwise
-          </div>
-          <div style={{ fontFamily, fontSize: 40, fontWeight: 700, color: C.teal, marginTop: 4, opacity: interpolate(f - b(24), [8, 20], [0, 1], clamp) }}>
-            Point. Count. Know.
-          </div>
-          <div style={{ fontFamily, fontSize: 24, color: C.dim, marginTop: 26, opacity: interpolate(f - b(24), [20, 34], [0, 1], clamp) }}>
-            Open source · github.com/yordanoskassa/breathwise · RevenueCat Shipaton 2026
-          </div>
+      <Sequence from={b(HIT)}>
+        <AbsoluteFill style={{ opacity: fade }}>
+          <Field color={C.green}>
+            <AbsoluteFill style={{ padding: '0 160px', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 56 }}>
+                <BreathDisc size={180} color={C.white} offset={sceneStart('close') + b(HIT)} />
+                <Reveal size={230} color={C.white} lines={['Breathwise']} />
+              </div>
+              <Reveal size={54} color={C.white} at={10} font="text" lines={['Point the camera. Count. Know.']} style={{ marginTop: 20, marginLeft: 236 }} />
+            </AbsoluteFill>
+            <AbsoluteFill style={{ justifyContent: 'flex-end', padding: '0 160px 64px', opacity: credits }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 22, fontFamily: text, fontSize: 24, color: C.white }}>
+                Built for
+                <Img src={staticFile('brand/revenuecat-logo-light.svg')} style={{ height: 40 }} />
+                Shipaton 2026 · Open source: github.com/yordanoskassa/breathwise
+              </div>
+              <Caption color="rgba(255,255,255,0.8)" style={{ marginTop: 14 }}>
+                Music: “A Kind of Hope” by Scott Buckley, CC BY 4.0, scottbuckley.com.au
+              </Caption>
+            </AbsoluteFill>
+          </Field>
         </AbsoluteFill>
-        <AbsoluteFill style={{ backgroundColor: '#fff', opacity: flash }} />
       </Sequence>
-    </AbsoluteFill>
+    </Field>
   );
 };

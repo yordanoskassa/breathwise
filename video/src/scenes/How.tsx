@@ -1,19 +1,14 @@
-import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame } from 'remotion';
 
-import { Background } from '../components/Background';
-import { IconLock } from '../components/Icons';
-import { Kinetic, Label } from '../components/Text';
-import { C, fontFamily } from '../theme';
+import { Field } from '../components/Field';
+import { Reveal, Steps } from '../components/Text';
+import { localBeat } from '../timeline';
+import { C, display, EASE, text } from '../theme';
 
-const STEP = 96;
-const STEPS = [
-  ['Each frame → 192 numbers', 'The picture itself is discarded instantly'],
-  ['Cells vote on the rhythm', 'Band-pass 8–108 /min; periodic cells win'],
-  ['Fused into one signal (PCA)', 'Every peak is one breath'],
-  ['Counted the WHO way', '60 s of clean signal, auto-pause on movement'],
-] as const;
-
+const b = (k: number) => localBeat('how', k);
+const STEP_BEATS = 3;
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
+const ease = { ...clamp, easing: EASE };
 
 /** Deterministic pseudo-noise. */
 const hash = (n: number) => {
@@ -21,111 +16,83 @@ const hash = (n: number) => {
   return s - Math.floor(s) - 0.5;
 };
 
-const STAGE_W = 540;
-const STAGE_H = 720;
+const SW = 480;
+const SH = 640;
 
-/** Chest-shaped "breathing here" heat, matching the app's tiles. */
 const heatAt = (i: number) => {
   const dx = ((i % 12) - 5.5) / 3.2;
   const dy = (Math.floor(i / 12) - 9) / 3.4;
   const d = dx * dx + dy * dy;
-  return d < 0.6 ? 1 : d < 1.2 ? 0.45 : 0;
+  return d < 0.6 ? 1 : d < 1.2 ? 0.4 : 0;
 };
 
 const Step1: React.FC<{ f: number }> = ({ f }) => {
-  const grid = interpolate(f, [2, 26], [0, 1], clamp);
-  const mosaic = interpolate(f, [36, 50], [0, 1], clamp);
-  const lock = interpolate(f, [50, 60], [0, 1], clamp);
+  const grid = interpolate(f, [2, 30], [0, 1], ease);
+  const mosaic = interpolate(f, [38, 54], [0, 1], ease);
+  const note = interpolate(f, [56, 66], [0, 1], ease);
   return (
-    <div style={{ position: 'relative', width: STAGE_W, height: STAGE_H, borderRadius: 34, overflow: 'hidden' }}>
-      <Img src={staticFile('img/baby.png')} style={{ position: 'absolute', width: '100%', height: '100%' }} />
-      <Img src={staticFile('img/mosaic.png')} style={{ position: 'absolute', width: '100%', height: '100%', opacity: mosaic }} />
-      <svg width={STAGE_W} height={STAGE_H} style={{ position: 'absolute' }}>
-        {Array.from({ length: 11 }).map((_, i) => {
-          const x = ((i + 1) * STAGE_W) / 12;
-          return <line key={`v${i}`} x1={x} y1={0} x2={x} y2={STAGE_H * grid} stroke={C.teal} strokeOpacity={0.55} strokeWidth={1.5} />;
-        })}
-        {Array.from({ length: 15 }).map((_, i) => {
-          const y = ((i + 1) * STAGE_H) / 16;
-          return <line key={`h${i}`} x1={0} y1={y} x2={STAGE_W * grid} y2={y} stroke={C.teal} strokeOpacity={0.55} strokeWidth={1.5} />;
-        })}
-      </svg>
-      <div
-        style={{
-          position: 'absolute',
-          right: 18,
-          bottom: 18,
-          opacity: lock,
-          transform: `scale(${0.6 + 0.4 * lock})`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          background: 'rgba(4,6,12,0.8)',
-          border: `1px solid ${C.teal}66`,
-          borderRadius: 999,
-          padding: '10px 18px',
-          fontFamily,
-          fontSize: 22,
-          fontWeight: 700,
-          color: C.teal,
-        }}>
-        <IconLock color={C.teal} size={22} /> video discarded
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 40 }}>
+      <div style={{ position: 'relative', width: SW, height: SH, overflow: 'hidden' }}>
+        <Img src={staticFile('img/baby.png')} style={{ position: 'absolute', width: '100%', height: '100%' }} />
+        <Img src={staticFile('img/mosaic.png')} style={{ position: 'absolute', width: '100%', height: '100%', opacity: mosaic }} />
+        <svg width={SW} height={SH} style={{ position: 'absolute' }}>
+          {Array.from({ length: 11 }).map((_, i) => (
+            <line key={`v${i}`} x1={((i + 1) * SW) / 12} y1={0} x2={((i + 1) * SW) / 12} y2={SH * grid} stroke={C.white} strokeWidth={1.5} />
+          ))}
+          {Array.from({ length: 15 }).map((_, i) => (
+            <line key={`h${i}`} x1={0} y1={((i + 1) * SH) / 16} x2={SW * grid} y2={((i + 1) * SH) / 16} stroke={C.white} strokeWidth={1.5} />
+          ))}
+        </svg>
+      </div>
+      <div style={{ opacity: note, width: 300, fontFamily: text, fontSize: 28, color: C.ink, lineHeight: 1.35 }}>
+        <div style={{ fontFamily: display, fontSize: 96, lineHeight: 1 }}>192</div>
+        brightness values per frame. The picture is dropped on the spot.
       </div>
     </div>
   );
 };
 
-const Step3: React.FC<{ f: number }> = ({ f }) => {
-  const cw = STAGE_W / 12;
-  const ch = STAGE_H / 16;
-  const bars = Array.from({ length: 36 }).map((_, i) => {
-    const bpm = 10 + i * 2.6;
-    const peak = Math.exp(-((bpm - 46) ** 2) / 18);
-    const grow = interpolate(f, [8 + i * 0.5, 50], [0, 1], clamp);
-    return (0.08 + 0.6 * Math.abs(hash(i * 5.3)) * 0.4 + peak) * grow;
+const Step2: React.FC<{ f: number }> = ({ f }) => {
+  const cw = SW / 12;
+  const ch = SH / 16;
+  const bars = Array.from({ length: 30 }).map((_, i) => {
+    const bpm = 10 + i * 3;
+    const peak = Math.exp(-((bpm - 46) ** 2) / 22);
+    const grow = interpolate(f, [8 + i * 0.6, 56], [0, 1], ease);
+    return (0.1 + 0.25 * Math.abs(hash(i * 5.3)) + peak) * grow;
   });
   return (
-    <div style={{ display: 'flex', gap: 60, alignItems: 'center' }}>
-      <div style={{ position: 'relative', width: STAGE_W * 0.72, height: STAGE_H * 0.72, borderRadius: 26, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', gap: 56, alignItems: 'flex-end' }}>
+      <div style={{ position: 'relative', width: SW * 0.8, height: SH * 0.8 }}>
         <Img src={staticFile('img/mosaic.png')} style={{ width: '100%', height: '100%' }} />
-        <svg width={STAGE_W * 0.72} height={STAGE_H * 0.72} style={{ position: 'absolute', left: 0, top: 0 }}>
+        <svg width={SW * 0.8} height={SH * 0.8} style={{ position: 'absolute', left: 0, top: 0 }}>
           {Array.from({ length: 192 }).map((_, i) => {
             const h = heatAt(i);
             if (!h) return null;
-            const on = interpolate(f, [4 + (i % 12) * 1.5, 18 + (i % 12) * 1.5], [0, 1], clamp);
+            const on = interpolate(f, [4 + (i % 12) * 1.5, 16 + (i % 12) * 1.5], [0, 1], clamp);
             return (
               <rect
                 key={i}
-                x={(i % 12) * cw * 0.72 + 2}
-                y={Math.floor(i / 12) * ch * 0.72 + 2}
-                width={cw * 0.72 - 4}
-                height={ch * 0.72 - 4}
-                rx={5}
-                fill={h > 0.5 ? C.teal : C.sky}
-                opacity={on * (h > 0.5 ? 0.75 : 0.35)}
+                x={(i % 12) * cw * 0.8 + 1}
+                y={Math.floor(i / 12) * ch * 0.8 + 1}
+                width={cw * 0.8 - 2}
+                height={ch * 0.8 - 2}
+                fill={C.green}
+                opacity={on * (h > 0.5 ? 0.85 : 0.4)}
               />
             );
           })}
         </svg>
       </div>
       <div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 300 }}>
-          {bars.map((b, i) => (
-            <div
-              key={i}
-              style={{
-                width: 12,
-                height: Math.max(4, b * 260),
-                borderRadius: 4,
-                background: Math.abs(10 + i * 2.6 - 46) < 3 ? C.teal : 'rgba(255,255,255,0.18)',
-                boxShadow: Math.abs(10 + i * 2.6 - 46) < 3 ? `0 0 24px ${C.teal}` : 'none',
-              }}
-            />
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 300, borderBottom: `2px solid ${C.ink}` }}>
+          {bars.map((v, i) => (
+            <div key={i} style={{ width: 13, height: Math.max(3, v * 250), background: Math.abs(10 + i * 3 - 46) < 3 ? C.green : C.ink, opacity: Math.abs(10 + i * 3 - 46) < 3 ? 1 : 0.8 }} />
           ))}
         </div>
-        <div style={{ fontFamily, color: C.dim, fontSize: 22, marginTop: 14, display: 'flex', justifyContent: 'space-between' }}>
-          <span>10</span>
-          <span style={{ color: C.teal, fontWeight: 800 }}>46 /min wins</span>
+        <div style={{ fontFamily: text, fontSize: 22, color: C.gray, marginTop: 12, display: 'flex', justifyContent: 'space-between', width: 570 }}>
+          <span>10 /min</span>
+          <span style={{ color: C.green, fontWeight: 800 }}>46 /min wins the vote</span>
           <span>100</span>
         </div>
       </div>
@@ -133,9 +100,9 @@ const Step3: React.FC<{ f: number }> = ({ f }) => {
   );
 };
 
-const Step4: React.FC<{ f: number }> = ({ f }) => {
-  const merge = interpolate(f, [4, 44], [0, 1], clamp);
-  const w = STAGE_W + 260;
+const Step3: React.FC<{ f: number }> = ({ f }) => {
+  const merge = interpolate(f, [4, 50], [0, 1], ease);
+  const w = 820;
   const h = 360;
   const line = (k: number, m: number) => {
     const pts: string[] = [];
@@ -143,72 +110,59 @@ const Step4: React.FC<{ f: number }> = ({ f }) => {
       const x = (i / 160) * w;
       const ph = (i / 160) * Math.PI * 2 * 5;
       const indiv = Math.sin(ph + k * 0.5) * (0.4 + 0.3 * hash(k * 13)) + hash(i * 3 + k * 29) * 0.35;
-      const fused = Math.sin(ph);
-      const v = indiv * (1 - m) + fused * m;
+      const v = indiv * (1 - m) + Math.sin(ph) * m;
       pts.push(`${x.toFixed(1)},${(h / 2 - v * (h / 2.6) + (1 - m) * (k - 4) * 14).toFixed(1)}`);
     }
     return pts.join(' ');
   };
   const peaks = Array.from({ length: 5 }).map((_, i) => ((i + 0.25) / 5) * w);
-  const shown = Math.floor(interpolate(f, [44, 84], [0, 5.99], clamp));
+  const shown = Math.floor(interpolate(f, [50, 90], [0, 5.99], clamp));
   return (
     <div style={{ position: 'relative' }}>
       <svg width={w} height={h}>
         {Array.from({ length: 9 }).map((_, k) => (
-          <polyline key={k} points={line(k, merge)} fill="none" stroke={C.sky} strokeOpacity={0.35 * (1 - merge) + 0.05} strokeWidth={2} />
+          <polyline key={k} points={line(k, merge)} fill="none" stroke={C.ink} strokeOpacity={0.4 * (1 - merge) + 0.05} strokeWidth={2} />
         ))}
-        <polyline points={line(4, 1)} fill="none" stroke={C.teal} strokeWidth={7} opacity={merge} strokeLinecap="round" />
+        <polyline points={line(4, 1)} fill="none" stroke={C.green} strokeWidth={7} opacity={merge} strokeLinecap="round" />
         {peaks.slice(0, shown).map((x, i) => (
-          <circle key={i} cx={x} cy={h / 2 - h / 2.6} r={11} fill="#fff" style={{ filter: `drop-shadow(0 0 10px ${C.teal})` }} />
+          <circle key={i} cx={x} cy={h / 2 - h / 2.6} r={12} fill={C.ink} />
         ))}
       </svg>
-      <div style={{ fontFamily, fontSize: 90, fontWeight: 900, color: C.text, position: 'absolute', right: 0, top: -30 }}>
+      <div style={{ fontFamily: display, fontSize: 110, color: C.ink, position: 'absolute', right: 0, top: -110 }}>
         {shown}
-        <span style={{ fontSize: 30, color: C.dim, fontWeight: 600 }}> breaths</span>
+        <span style={{ fontFamily: text, fontSize: 30, color: C.gray, fontWeight: 700 }}> breaths</span>
       </div>
     </div>
   );
 };
 
-const Step5: React.FC<{ f: number }> = ({ f }) => {
-  const shake = f > 30 && f < 50;
-  const counted = interpolate(f, [0, 30, 50, 90], [0, 22, 22, 60], clamp);
+const Step4: React.FC<{ f: number }> = ({ f }) => {
+  const shake = f > 28 && f < 50;
+  const counted = interpolate(f, [0, 28, 50, 92], [0, 22, 22, 60], clamp);
   const R = 170;
   const circ = 2 * Math.PI * R;
-  const dx = shake ? Math.sin(f * 2.3) * 14 : 0;
+  const dx = shake ? Math.sin(f * 2.3) * 12 : 0;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 70, transform: `translateX(${dx}px)` }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 64, transform: `translateX(${dx}px)` }}>
       <svg width={400} height={400}>
-        <circle cx={200} cy={200} r={R} stroke="rgba(255,255,255,0.1)" strokeWidth={18} fill="none" />
+        <circle cx={200} cy={200} r={R} stroke={C.paper} strokeWidth={22} fill="none" />
         <circle
           cx={200}
           cy={200}
           r={R}
-          stroke={shake ? C.amber : C.teal}
-          strokeWidth={18}
+          stroke={shake ? C.yellow : C.green}
+          strokeWidth={22}
           fill="none"
-          strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={circ * (1 - counted / 60)}
           transform="rotate(-90 200 200)"
-          opacity={shake ? 0.5 : 1}
         />
-        <text x={200} y={220} textAnchor="middle" fontFamily={fontFamily} fontSize={78} fontWeight={900} fill={C.text}>
+        <text x={200} y={228} textAnchor="middle" fontFamily={display} fontSize={86} fill={C.ink}>
           {Math.round(counted)}s
         </text>
       </svg>
-      <div
-        style={{
-          fontFamily,
-          fontSize: 34,
-          fontWeight: 800,
-          color: shake ? C.amber : C.teal,
-          padding: '16px 26px',
-          borderRadius: 999,
-          background: (shake ? C.amber : C.teal) + '1f',
-          border: `1.5px solid ${(shake ? C.amber : C.teal)}66`,
-        }}>
-        {shake ? 'Movement: clock paused' : 'Counting clean signal'}
+      <div style={{ fontFamily: text, fontSize: 36, fontWeight: 800, color: C.ink, background: shake ? C.yellow : C.paper, padding: '14px 22px' }}>
+        {shake ? 'Child moved: clock paused' : 'Counting clean signal'}
       </div>
     </div>
   );
@@ -216,63 +170,31 @@ const Step5: React.FC<{ f: number }> = ({ f }) => {
 
 export const How: React.FC = () => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const STEP = b(STEP_BEATS);
   const active = Math.min(3, Math.floor(f / STEP));
-  const local = f - active * STEP;
-  const fade = interpolate(local, [0, 8, STEP - 6, STEP], [0, 1, 1, active === 3 ? 1 : 0], clamp);
-  const Stage = [Step1, Step3, Step4, Step5][active];
-
+  const local = f - b(active * STEP_BEATS);
+  const fade = interpolate(local, [0, 8], [0, 1], ease);
+  const Stage = [Step1, Step2, Step3, Step4][active];
   return (
-    <AbsoluteFill>
-      <Background tint={C.sky} />
-      <AbsoluteFill style={{ padding: '110px 130px', flexDirection: 'row', gap: 90 }}>
-        <div style={{ width: 620, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <Label n="02" text="How it works" color={C.sky} />
-          <Kinetic text="Signal processing, not guesswork." size={60} delay={6} />
-          <div style={{ height: 30 }} />
-          {STEPS.map(([title, sub], i) => {
-            const on = i === active;
-            const done = i < active;
-            const s = spring({ frame: f - i * STEP, fps, config: { damping: 20 } });
-            return (
-              <div
-                key={i}
-                style={{
-                  fontFamily,
-                  display: 'flex',
-                  gap: 20,
-                  alignItems: 'flex-start',
-                  opacity: on ? 1 : done ? 0.55 : 0.28,
-                  transform: `translateX(${on ? 12 * s : 0}px)`,
-                }}>
-                <div
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 12,
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 900,
-                    fontSize: 22,
-                    color: on ? C.bg : C.teal,
-                    background: on ? C.teal : C.teal + '1a',
-                  }}>
-                  {i + 1}
-                </div>
-                <div>
-                  <div style={{ fontSize: 30, fontWeight: 800, color: C.text }}>{title}</div>
-                  <div style={{ fontSize: 21, color: C.dim, marginTop: 4, height: on ? 'auto' : 0, overflow: 'hidden' }}>{sub}</div>
-                </div>
-              </div>
-            );
-          })}
+    <Field color={C.white}>
+      <AbsoluteFill style={{ padding: '120px 140px', flexDirection: 'row', gap: 80 }}>
+        <div style={{ width: 660 }}>
+          <Reveal size={68} lines={['Video in.', 'Numbers out.', 'Breaths counted.']} />
+          <div style={{ height: 40 }} />
+          <Steps
+            width={640}
+            items={[
+              { at: b(0), title: 'Shrink each frame to a grid' },
+              { at: b(3), title: 'Cells vote on the rhythm', sub: 'Filtered to 8–108 breaths/min' },
+              { at: b(6), title: 'Merge them into one trace', sub: 'Principal component analysis' },
+              { at: b(9), title: 'Count for sixty seconds', sub: 'Pauses when the child moves' },
+            ]}
+          />
         </div>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: fade }}>
           <Stage f={local} />
         </div>
       </AbsoluteFill>
-    </AbsoluteFill>
+    </Field>
   );
 };

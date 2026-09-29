@@ -1,144 +1,107 @@
-import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { interpolate, useCurrentFrame } from 'remotion';
 
-import { C, fontFamily } from '../theme';
+import { C, display, EASE, text } from '../theme';
 
 type Style = React.CSSProperties;
+const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 
-/** Words rise and un-blur one after another. */
-export const Kinetic: React.FC<{
-  text: string;
-  delay?: number;
-  stagger?: number;
-  size?: number;
-  weight?: number;
-  color?: string;
-  style?: Style;
-  highlight?: Record<string, string>;
-}> = ({ text, delay = 0, stagger = 3, size = 72, weight = 800, color = C.text, style, highlight = {} }) => {
+/** 0→1 over `dur` frames from `at`, eased. */
+export const useIn = (at: number, dur = 14) => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const words = text.split(' ');
+  return interpolate(f, [at, at + dur], [0, 1], { ...clamp, easing: EASE });
+};
+
+/** Lines slide up from behind a mask, one after another. */
+export const Reveal: React.FC<{
+  lines: React.ReactNode[];
+  at?: number;
+  gap?: number;
+  size: number;
+  color?: string;
+  font?: 'display' | 'text';
+  weight?: number;
+  lineHeight?: number;
+  style?: Style;
+}> = ({ lines, at = 0, gap = 5, size, color = C.ink, font = 'display', weight, lineHeight = 1.04, style }) => {
+  const f = useCurrentFrame();
   return (
-    <div
-      style={{
-        fontFamily,
-        fontSize: size,
-        fontWeight: weight,
-        letterSpacing: size > 60 ? -size * 0.035 : -0.5,
-        lineHeight: 1.08,
-        color,
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: `0 ${size * 0.26}px`,
-        ...style,
-      }}>
-      {words.map((w, i) => {
-        const s = spring({ frame: f - delay - i * stagger, fps, config: { damping: 18, stiffness: 140 } });
+    <div style={{ fontFamily: font === 'display' ? display : text, fontSize: size, fontWeight: weight ?? (font === 'display' ? 400 : 700), color, lineHeight, ...style }}>
+      {lines.map((l, i) => {
+        const p = interpolate(f, [at + i * gap, at + i * gap + 14], [0, 1], { ...clamp, easing: EASE });
         return (
-          <span
-            key={i}
-            style={{
-              display: 'inline-block',
-              transform: `translateY(${(1 - s) * size * 0.55}px)`,
-              opacity: s,
-              filter: `blur(${(1 - s) * 10}px)`,
-              color: highlight[w.replace(/[.,]/g, '')] ?? undefined,
-            }}>
-            {w}
-          </span>
+          <div key={i} style={{ overflow: 'hidden', paddingBottom: size * 0.08 }}>
+            <div style={{ transform: `translateY(${(1 - p) * 110}%)` }}>{l}</div>
+          </div>
         );
       })}
     </div>
   );
 };
 
-export const Label: React.FC<{ n: string; text: string; delay?: number; color?: string }> = ({ n, text, delay = 0, color = C.teal }) => {
-  const f = useCurrentFrame();
-  const o = interpolate(f - delay, [0, 12], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  return (
-    <div
-      style={{
-        fontFamily,
-        fontSize: 22,
-        fontWeight: 800,
-        letterSpacing: 4,
-        color,
-        opacity: o,
-        transform: `translateX(${(1 - o) * -20}px)`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-      }}>
-      <span style={{ padding: '4px 10px', borderRadius: 8, background: color + '22', border: `1px solid ${color}55` }}>{n}</span>
-      {text.toUpperCase()}
-    </div>
-  );
-};
-
-/** Pill callout with a dot that slides in from the side. */
-export const Callout: React.FC<{ text: string; sub?: string; at: number; color?: string; icon?: React.ReactNode }> = ({
-  text,
-  sub,
-  at,
-  color = C.teal,
-  icon,
-}) => {
-  const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const s = spring({ frame: f - at, fps, config: { damping: 16, stiffness: 130 } });
-  if (f < at - 1) return null;
-  return (
-    <div
-      style={{
-        fontFamily,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 20,
-        padding: '20px 28px',
-        borderRadius: 22,
-        background: 'rgba(16, 24, 41, 0.78)',
-        border: `1px solid ${color}44`,
-        boxShadow: `0 0 50px ${color}1f`,
-        transform: `translateX(${(1 - s) * 60}px) scale(${0.96 + 0.04 * s})`,
-        opacity: s,
-      }}>
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 14,
-          background: color + '22',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 24,
-          color,
-          flexShrink: 0,
-        }}>
-        {icon ?? '●'}
-      </div>
-      <div>
-        <div style={{ fontSize: 32, fontWeight: 750, color: C.text, letterSpacing: -0.4 }}>{text}</div>
-        {sub ? <div style={{ fontSize: 22, fontWeight: 500, color: C.dim, marginTop: 4 }}>{sub}</div> : null}
-      </div>
-    </div>
-  );
-};
-
-export const FadeIn: React.FC<{ at?: number; dur?: number; children: React.ReactNode; style?: Style; y?: number }> = ({
-  at = 0,
-  dur = 15,
+export const P: React.FC<{ children: React.ReactNode; at?: number; size?: number; color?: string; style?: Style }> = ({
   children,
+  at = 0,
+  size = 30,
+  color = C.gray,
   style,
-  y = 20,
 }) => {
-  const f = useCurrentFrame();
-  const o = interpolate(f - at, [0, dur], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  return <div style={{ opacity: o, transform: `translateY(${(1 - o) * y}px)`, ...style }}>{children}</div>;
+  const p = useIn(at, 12);
+  return (
+    <div style={{ fontFamily: text, fontSize: size, lineHeight: 1.4, color, opacity: p, transform: `translateY(${(1 - p) * 12}px)`, ...style }}>
+      {children}
+    </div>
+  );
 };
 
-export const Source: React.FC<{ text: string; at?: number }> = ({ text, at = 0 }) => (
-  <FadeIn at={at} y={0}>
-    <div style={{ fontFamily, fontSize: 20, color: C.faint, fontWeight: 500, letterSpacing: 0.3 }}>{text}</div>
-  </FadeIn>
-);
+/**
+ * Numbered list separated by hairlines. Items appear at their frame; the
+ * newest is full strength, earlier ones step back.
+ */
+export const Steps: React.FC<{
+  items: { at: number; title: string; sub?: string }[];
+  onInk?: boolean;
+  accent?: string;
+  width?: number;
+}> = ({ items, onInk = false, accent = C.green, width = 800 }) => {
+  const f = useCurrentFrame();
+  const fg = onInk ? C.white : C.ink;
+  const dim = onInk ? C.grayOnInk : C.gray;
+  const line = onInk ? C.lineOnInk : C.lineOnWhite;
+  const current = items.reduce((acc, it, i) => (f >= it.at ? i : acc), -1);
+  return (
+    <div style={{ width }}>
+      {items.map((it, i) => {
+        const p = interpolate(f, [it.at, it.at + 12], [0, 1], { ...clamp, easing: EASE });
+        const active = i === current;
+        return (
+          <div
+            key={it.title}
+            style={{
+              display: 'flex',
+              gap: 28,
+              padding: '22px 0',
+              borderTop: `1.5px solid ${line}`,
+              opacity: p === 0 ? 0 : active ? 1 : 0.45,
+              transform: `translateX(${(1 - p) * 24}px)`,
+            }}>
+            <div style={{ fontFamily: display, fontSize: 34, color: accent, width: 40, lineHeight: 1.15 }}>{i + 1}</div>
+            <div>
+              <div style={{ fontFamily: text, fontWeight: 700, fontSize: 36, color: fg, lineHeight: 1.2 }}>{it.title}</div>
+              {it.sub ? <div style={{ fontFamily: text, fontSize: 25, color: dim, marginTop: 6 }}>{it.sub}</div> : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export const Caption: React.FC<{ children: React.ReactNode; at?: number; color?: string; style?: Style }> = ({
+  children,
+  at = 0,
+  color = C.gray,
+  style,
+}) => {
+  const p = useIn(at, 10);
+  return <div style={{ fontFamily: text, fontSize: 20, color, opacity: p, ...style }}>{children}</div>;
+};
