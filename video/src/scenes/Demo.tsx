@@ -89,6 +89,21 @@ export const Demo: React.FC = () => {
         </div>
       </AbsoluteFill>
 
+      <div
+        style={{
+          position: 'absolute',
+          left: 250,
+          bottom: 22,
+          width: 460,
+          textAlign: 'center',
+          fontFamily,
+          fontSize: 18,
+          fontWeight: 600,
+          color: C.faint,
+          opacity: enter,
+        }}>
+        iOS Simulator · simulated sleeping baby (real camera on device)
+      </div>
       <AbsoluteFill style={{ left: 900, width: 900, paddingTop: 140, gap: 20 }}>
         <Label n="01" text="Measure" />
         <Kinetic text="Point the camera. That’s it." size={70} delay={4} stagger={3} />
